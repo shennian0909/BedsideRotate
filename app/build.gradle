@@ -1,0 +1,31 @@
+plugins {
+    id 'com.android.application'
+}
+
+def licenseAssets = tasks.register('prepareLicenseAssets', Sync) {
+    from(rootProject.file('LICENSE'))
+    rename 'LICENSE', 'gpl-3.0.txt'
+    into(layout.buildDirectory.dir('generated/assets/license'))
+}
+
+android {
+    namespace 'app.bedsiderotate'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'app.bedsiderotate'
+        minSdk 26
+        targetSdk 34
+        versionCode 9
+        versionName '0.1.8'
+    }
+    sourceSets.main.assets.srcDir(layout.buildDirectory.dir('generated/assets/license'))
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+tasks.named('preBuild') {
+    dependsOn licenseAssets
+}
