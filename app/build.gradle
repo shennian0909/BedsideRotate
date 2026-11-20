@@ -11,13 +11,16 @@ def licenseAssets = tasks.register('prepareLicenseAssets', Sync) {
 android {
     namespace 'app.bedsiderotate'
     compileSdk 35
+    buildFeatures {
+        buildConfig true
+    }
 
     defaultConfig {
         applicationId 'app.bedsiderotate'
         minSdk 26
         targetSdk 34
-        versionCode 9
-        versionName '0.1.8'
+        versionCode 10
+        versionName '0.1.9'
     }
     sourceSets.main.assets.srcDir(layout.buildDirectory.dir('generated/assets/license'))
     compileOptions {

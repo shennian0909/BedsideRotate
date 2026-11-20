@@ -2,6 +2,10 @@
     <string name="app_name">懒人翻身</string>
     <string name="app_rule_accessibility_description">识别前台应用包名，在进入游戏时暂停懒人翻身，并应用你选择的屏幕方向规则。只监听窗口状态变化。</string>
     <string name="about_title">关于懒人翻身</string>
+    <string name="about_back">返回</string>
+    <string name="about_version">版本 %1$s</string>
+    <string name="source_code">项目源码</string>
+    <string name="license_heading">开源许可</string>
     <string name="github_project">GitHub 项目</string>
     <string name="project_url" translatable="false">https://github.com/shennian0909/BedsideRotate</string>
     <string name="project_license">懒人翻身采用 GNU 通用公共许可证第 3 版（GPL-3.0-only）开源。</string>

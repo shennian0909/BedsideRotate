@@ -3,13 +3,10 @@ package app.bedsiderotate;
 import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
-import android.content.res.Configuration;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
-import android.view.Gravity;
-import android.view.MenuItem;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.LinearLayout;
@@ -21,86 +18,91 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 
-public final class AboutActivity extends BedsideActivity {
+public final class AboutActivity extends StyledActivity {
     @Override protected void onCreate(Bundle state) {
-        boolean night = (getResources().getConfiguration().uiMode
-                & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
-        setTheme(night ? android.R.style.Theme_Material : android.R.style.Theme_Material_Light);
         super.onCreate(state);
-        getActionBar().setDisplayHomeAsUpEnabled(true);
-        getActionBar().setTitle(R.string.about_title);
-
         ScrollView scroll = new ScrollView(this);
-        LinearLayout content = new LinearLayout(this);
-        content.setOrientation(LinearLayout.VERTICAL);
-        int padding = dp(24);
-        content.setPadding(padding, padding, padding, padding);
-        scroll.addView(content);
-        setContentView(scroll);
+        LinearLayout page = createPage(scroll);
+        Button back = createButton(getString(R.string.about_back), ButtonStyle.GHOST);
+        back.setMinHeight(dp(48));
+        back.setOnClickListener(v -> finish());
+        String version = getString(R.string.about_version, BuildConfig.VERSION_NAME);
+        page.addView(createBrandHeader(getString(R.string.about_title), version, back), matchWrap());
+        page.addView(createRule());
 
-        TextView name = new TextView(this);
-        name.setText(R.string.app_name);
-        name.setTextSize(26);
-        name.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        content.addView(name);
-
-        Button project = new Button(this);
-        project.setText(R.string.github_project);
-        project.setAllCaps(false);
-        project.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
-        project.setCompoundDrawablePadding(dp(12));
+        Uri repository = Uri.parse(getString(R.string.project_url));
+        Button project = createButton(getString(R.string.github_project), ButtonStyle.SECONDARY);
         Drawable mark = getDrawable(R.drawable.ic_github).mutate();
         mark.setTint(project.getCurrentTextColor());
         project.setCompoundDrawablesRelativeWithIntrinsicBounds(mark, null, null, null);
+        project.setCompoundDrawablePadding(dp(8));
         project.setOnClickListener(v -> {
-            Intent open = new Intent(Intent.ACTION_VIEW, Uri.parse(getString(R.string.project_url)));
             try {
-                startActivity(open);
+                startActivity(new Intent(Intent.ACTION_VIEW, repository));
             } catch (ActivityNotFoundException error) {
                 Toast.makeText(this, R.string.no_browser, Toast.LENGTH_LONG).show();
             }
         });
-        LinearLayout.LayoutParams projectLayout = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        projectLayout.topMargin = padding;
-        content.addView(project, projectLayout);
-
-        TextView license = new TextView(this);
-        license.setText(R.string.project_license);
-        license.setTextSize(16);
-        license.setPadding(0, padding, 0, dp(8));
-        content.addView(license);
-        Button fullText = new Button(this);
-        fullText.setText(R.string.read_license);
+        Button fullText = createButton(getString(R.string.read_license), ButtonStyle.SECONDARY);
         fullText.setOnClickListener(v -> showLicense());
-        content.addView(fullText);
+
+        LinearLayout source = infoCard(getString(R.string.source_code),
+                String.join("/", repository.getPathSegments()), project);
+        LinearLayout license = infoCard(getString(R.string.license_heading),
+                getString(R.string.project_license), fullText);
+        boolean tablet = getResources().getConfiguration().smallestScreenWidthDp >= 600;
+        LinearLayout cards = new LinearLayout(this);
+        cards.setOrientation(tablet ? LinearLayout.HORIZONTAL : LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams sourceParams = tablet
+                ? new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f)
+                : matchWrap();
+        LinearLayout.LayoutParams licenseParams = new LinearLayout.LayoutParams(sourceParams);
+        if (tablet) {
+            sourceParams.setMarginEnd(dp(16));
+        } else {
+            sourceParams.bottomMargin = dp(16);
+        }
+        cards.addView(source, sourceParams);
+        cards.addView(license, licenseParams);
+        page.addView(cards, matchWrap());
+        setContentView(scroll);
+    }
+
+    private LinearLayout infoCard(String title, String description, Button action) {
+        LinearLayout card = createCard();
+        card.addView(sectionTitle(title), matchWrap());
+        TextView detail = text(description, 14f, palette.muted, Typeface.NORMAL);
+        detail.setPadding(0, dp(8), 0, dp(16));
+        card.addView(detail, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        action.setMinHeight(dp(48));
+        card.addView(action, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        return card;
     }
 
     private void showLicense() {
-        StringBuilder text = new StringBuilder();
+        StringBuilder license = new StringBuilder();
         try (InputStreamReader reader = new InputStreamReader(getAssets().open("gpl-3.0.txt"), StandardCharsets.UTF_8)) {
             char[] buffer = new char[4096];
             int count;
             while ((count = reader.read(buffer)) != -1) {
-                text.append(buffer, 0, count);
+                license.append(buffer, 0, count);
             }
         } catch (IOException error) {
             Toast.makeText(this, R.string.license_read_error, Toast.LENGTH_SHORT).show();
             return;
         }
-        new AlertDialog.Builder(this).setTitle("GNU GPL v3.0").setMessage(text)
+        TextView heading = sectionTitle("GNU GPL v3.0");
+        heading.setPadding(dp(24), dp(20), dp(24), dp(8));
+        int theme = nightMode ? android.R.style.Theme_Material_Dialog_Alert
+                : android.R.style.Theme_Material_Light_Dialog_Alert;
+        AlertDialog dialog = new AlertDialog.Builder(this, theme)
+                .setCustomTitle(heading).setMessage(license)
                 .setPositiveButton(android.R.string.ok, null).show();
-    }
-
-    @Override public boolean onOptionsItemSelected(MenuItem item) {
-        if (item.getItemId() == android.R.id.home) {
-            finish();
-            return true;
-        }
-        return super.onOptionsItemSelected(item);
-    }
-
-    private int dp(int value) {
-        return Math.round(value * getResources().getDisplayMetrics().density);
+        dialog.getWindow().setBackgroundDrawable(rounded(palette.surface, dp(18), dp(1), palette.line));
+        TextView message = dialog.findViewById(android.R.id.message);
+        message.setTextColor(palette.ink);
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(palette.accentText);
     }
 }
