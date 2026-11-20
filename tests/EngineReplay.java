@@ -11,6 +11,8 @@ public final class EngineReplay {
     public static void main(String[] args) {
         deskProjectionAndHysteresis();
         manualStepPreservesFixedDeskPose();
+        restoredManagedRotationHoldsFirstDeskGravity();
+        restoredManagedRotationKeepsBedState();
         bedEntryRollAndWristQuadrants();
         wristHysteresisAndReverse();
         thresholdRangeAvoidsImmediateUndo();
@@ -125,6 +127,35 @@ public final class EngineReplay {
         beforeFirstGravity.gravity(0.0f, 9.81f, 0.0f, 0L);
         check(beforeFirstGravity.rotation() == 1,
                 "manual step before the first gravity sample must also hold");
+    }
+
+    private static void restoredManagedRotationHoldsFirstDeskGravity() {
+        OrientationEngine engine = new OrientationEngine(0, 55);
+        engine.gravity(0.0f, 9.81f, 0.0f, 0L);
+        engine.restoreManagedRotation(2);
+
+        engine.gravity(9.81f, 0.0f, 0.0f, 10 * MILLIS);
+        check(engine.rotation() == 2,
+                "restored desk rotation must hold the first gravity sample");
+
+        engine.gravity(-9.81f, 0.0f, 0.0f, 20 * MILLIS);
+        check(engine.rotation() == 3,
+                "a real posture change must release the restored desk hold");
+    }
+
+    private static void restoredManagedRotationKeepsBedState() {
+        OrientationEngine engine = new OrientationEngine(0, 55);
+        engine.calibrate(1);
+        engine.restoreManagedRotation(3);
+
+        check(engine.inBed(), "restoring a managed rotation must retain bed mode");
+        check(engine.rotation() == 3,
+                "restoring a managed rotation must retain the supplied quadrant");
+
+        engine.gravity(0.0f, 0.0f, 9.81f, 0L);
+        check(engine.inBed(), "restored bed mode must await the flat-exit hold");
+        check(engine.rotation() == 3,
+                "bed gravity must not replace the restored quadrant immediately");
     }
 
     private static void wristHysteresisAndReverse() {

@@ -212,6 +212,17 @@ public final class OrientationEngine {
     }
 
     /**
+     * Restores a managed quadrant after an external interruption. Bed/desk mode
+     * is retained, and the first gravity sample becomes the desk hold reference.
+     */
+    public void restoreManagedRotation(int rotation) {
+        this.rotation = requireSurfaceRotation(rotation);
+        resetMotion();
+        updateEyeAxes();
+        holdDeskRotationAtCurrentGravity();
+    }
+
+    /**
      * Steps rotation forward manually, refreshes the logical axes, and holds this
      * direction until gravity changes by at least 12 degrees. The hold covers fixed
      * emulator orientations and a manual step before the first gravity sample. In
@@ -225,11 +236,7 @@ public final class OrientationEngine {
         reversalExtremeSpinDegrees = 0.0;
         updateEyeAxes();
 
-        manualDeskHold = !inBed;
-        haveManualGravity = false;
-        if (manualDeskHold) {
-            captureManualGravity();
-        }
+        holdDeskRotationAtCurrentGravity();
     }
 
     public int rotation() {
@@ -340,6 +347,14 @@ public final class OrientationEngine {
         manualDeskHold = false;
         haveManualGravity = false;
         return false;
+    }
+
+    private void holdDeskRotationAtCurrentGravity() {
+        manualDeskHold = !inBed;
+        haveManualGravity = false;
+        if (manualDeskHold) {
+            captureManualGravity();
+        }
     }
 
     private void captureManualGravity() {

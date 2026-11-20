@@ -1,6 +1,6 @@
 <resources>
     <string name="app_name">懒人翻身</string>
-    <string name="app_rule_accessibility_description">识别前台应用包名，在进入游戏时暂停懒人翻身，并应用你选择的屏幕方向规则。只监听窗口状态变化。</string>
+    <string name="app_rule_accessibility_description">在本机识别前台应用和窗口范围。游戏上打开小窗或最近任务时保持暂停，回到桌面后恢复阅读方向。服务不截图，也不读取聊天内容。</string>
     <string name="about_title">关于懒人翻身</string>
     <string name="about_back">返回</string>
     <string name="about_version">版本 %1$s</string>

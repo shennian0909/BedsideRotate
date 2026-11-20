@@ -89,9 +89,6 @@ public final class AppRules {
     }
 
     public static int mode(Context context) {
-        if (BedsideActivity.isForeground()) {
-            return FOLLOW;
-        }
         String currentPackage = foregroundPackage;
         if (isGamePauseEnabled(context)
                 && detectorConnected
@@ -99,6 +96,10 @@ public final class AppRules {
                 && !context.getPackageName().equals(currentPackage)
                 && isGamePackage(context, currentPackage)) {
             return GAME_PAUSED;
+        }
+        // The detector can retain an underlying game while our multi-window UI is visible.
+        if (BedsideActivity.isForeground()) {
+            return FOLLOW;
         }
         if (!isEnabled(context)) {
             return FOLLOW;
@@ -120,6 +121,10 @@ public final class AppRules {
         Intent intent = new Intent(context, RotationService.class)
                 .setAction(RotationService.OPTIONS);
         context.startService(intent);
+    }
+
+    public static void notifyForegroundChanged() {
+        RotationService.dispatchForegroundChanged();
     }
 
     static void setDetectorConnected(boolean connected) {

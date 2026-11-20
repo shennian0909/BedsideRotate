@@ -52,6 +52,8 @@ public class RotationService extends Service implements SensorEventListener {
     public static volatile boolean running;
     public static volatile String lastStatus = "服务未运行";
 
+    private static volatile RotationService activeService;
+
     private static final String PREFS_NAME = "bedside";
     private static final String PREF_THRESHOLD = "threshold";
     static final String PREF_AUTO_EXIT_BED_WHEN_FLAT = "auto_exit_bed_when_flat";
@@ -96,6 +98,7 @@ public class RotationService extends Service implements SensorEventListener {
     private boolean lastBed;
     private float lastAlpha;
     private int appRuleMode = AppRules.FOLLOW;
+    private int pausedManagedRotation = -1;
 
     private final Runnable statusRunnable = new Runnable() {
         @Override
@@ -206,6 +209,9 @@ public class RotationService extends Service implements SensorEventListener {
         }
 
         running = false;
+        if (activeService == this) {
+            activeService = null;
+        }
         MotionTrace.finish();
         if (wasRunning) {
             requestTileListeningState();
@@ -288,6 +294,7 @@ public class RotationService extends Service implements SensorEventListener {
         startForeground(NOTIFICATION_ID, buildNotification("正在启动床头方向接管"));
         foregroundStarted = true;
         running = true;
+        activeService = this;
 
         registerScreenReceiver();
         refreshPreferences();
@@ -440,15 +447,28 @@ public class RotationService extends Service implements SensorEventListener {
             return;
         }
 
-        appRuleMode = nextMode;
+        int previousMode = appRuleMode;
         if (nextMode == AppRules.GAME_PAUSED) {
             pauseForGame();
+        }
+        appRuleMode = nextMode;
+        if (nextMode == AppRules.GAME_PAUSED) {
+            return;
+        }
+        if (previousMode == AppRules.GAME_PAUSED && nextMode == AppRules.FOLLOW) {
+            restorePausedManagedRotation();
         } else if (nextMode == AppRules.PASS) {
+            pausedManagedRotation = -1;
             releaseSystemControl();
+        } else {
+            pausedManagedRotation = -1;
         }
     }
 
     private void pauseForGame() {
+        pausedManagedRotation = isManagedMode() && controlStarted
+                ? requestedRotation()
+                : -1;
         releaseSystemControl();
         if (overlayController != null) {
             overlayController.removeAll();
@@ -456,6 +476,34 @@ public class RotationService extends Service implements SensorEventListener {
         unregisterSensors();
         stopStatusUpdates();
         MotionTrace.finish();
+    }
+
+    private void restorePausedManagedRotation() {
+        int rotation = pausedManagedRotation;
+        pausedManagedRotation = -1;
+        if (rotation < 0 || engine == null) {
+            return;
+        }
+        engine.restoreManagedRotation(rotation);
+    }
+
+    static void dispatchForegroundChanged() {
+        RotationService service = activeService;
+        if (!running || service == null) {
+            return;
+        }
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            service.refreshForForegroundChange();
+        } else {
+            service.mainHandler.post(service::refreshForForegroundChange);
+        }
+    }
+
+    private void refreshForForegroundChange() {
+        if (!running || engine == null || AppRules.mode(this) == appRuleMode) {
+            return;
+        }
+        refreshPreferences();
     }
 
     private void releaseSystemControl() {
@@ -747,6 +795,9 @@ public class RotationService extends Service implements SensorEventListener {
         }
 
         running = false;
+        if (activeService == this) {
+            activeService = null;
+        }
         requestTileListeningState();
         if (foregroundStarted) {
             stopForeground(STOP_FOREGROUND_REMOVE);
